@@ -311,8 +311,8 @@ import micropip
 await micropip.install('openpyxl')
       `);
       setStatus('Загружаю алгоритм...');
-      const resp = await fetch('bp_draw.py');
-      if (!resp.ok) throw new Error('Не удалось загрузить bp_draw.py (' + resp.status + ')');
+      const resp = await fetch('bpd.py');
+      if (!resp.ok) throw new Error('Не удалось загрузить bpd.py (' + resp.status + ')');
       const code = await resp.text();
       pyodide.runPython(code);
       setStatus('Готово — заполняйте форму', 'ready');
