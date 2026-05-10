@@ -1,6 +1,7 @@
 from __future__ import annotations 
 import random
 import sys
+import io
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Set, Tuple
 from openpyxl import Workbook
@@ -329,6 +330,36 @@ def assign_pairs_to_slots( # assign_pairs_to_slots — второй этап; re
 
     return current_assignment
 
+def run_draw(participants_data: List[Dict], mode: int) -> bytes: # для веб версии
+    participants = [
+        Participant(
+            name=p["name"],
+            level=p["level"],
+            ironman=bool(p["ironman"]),
+            opening=int(p["opening"]),
+        )
+        for p in participants_data
+    ]
+ 
+    slots = build_slots()
+    if mode == 2:
+        oldman_room = random.choice([1, 2])
+        room_for_level: Optional[Dict[str, int]] = {
+            "oldman": oldman_room,
+            "newbie": 3 - oldman_room,
+        }
+    else:
+        room_for_level = None
+ 
+    assignment = assign_ironmen(participants, slots, room_for_level)
+    remaining_people = [p for p in participants if not p.ironman]
+    units = build_units(remaining_people, mode)
+    assignment = assign_pairs_to_slots(units, slots, assignment, mode, room_for_level)
+ 
+    buf = io.BytesIO()
+    write_excel(participants, assignment, buf)
+    return buf.getvalue()
+    
 def write_excel( # первый лист — список участников, второй — собственно сетка
     participants: List[Participant],
     assignment: Dict[Tuple[int, int, str], List[str]],
