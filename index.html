@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Жеребьёвка БПД</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F1E8;
+    --surface: #FFFEFB;
+    --ink: #1A1A1A;
+    --muted: #6B6B6B;
+    --hairline: #D8D2C4;
+    --hairline-strong: #B8AF98;
+    --accent: #7A2E1F;
+    --accent-soft: #F3E5DF;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+  }
+  header {
+    border-bottom: 1px solid var(--hairline);
+    padding-bottom: 24px;
+    margin-bottom: 32px;
+  }
+  h1 {
+    font-family: 'Lora', serif;
+    font-weight: 600;
+    font-size: 32px;
+    margin: 0 0 8px;
+    letter-spacing: -0.01em;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0;
+  }
+  .status {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .status.ready { border-color: #B5C9A8; background: #F0F5EA; color: #3B5928; }
+  .status.error { border-color: #D9A89A; background: #F9ECE7; color: var(--accent); }
+  .spinner {
+    width: 12px; height: 12px;
+    border: 2px solid var(--hairline);
+    border-top-color: var(--ink);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .table-header, .row {
+    display: grid;
+    grid-template-columns: 32px 1fr 130px 110px 170px;
+    gap: 10px;
+    align-items: center;
+  }
+  .table-header {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    padding: 0 4px 8px;
+    border-bottom: 1px solid var(--hairline);
+    margin-bottom: 8px;
+  }
+  .row { padding: 4px 0; }
+  .row .num {
+    font-family: 'Lora', serif;
+    font-size: 14px;
+    color: var(--muted);
+    text-align: right;
+    padding-right: 4px;
+  }
+  input[type="text"], select {
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--hairline);
+    background: var(--surface);
+    border-radius: 3px;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--ink);
+    width: 100%;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  input[type="text"]:focus, select:focus {
+    outline: none;
+    border-color: var(--ink);
+  }
+  input[type="text"]:hover, select:hover { border-color: var(--hairline-strong); }
+  select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%236B6B6B' stroke-width='1.5' fill='none' stroke-linecap='round'/></svg>"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
+  .opening-cell { visibility: hidden; }
+  .row.has-iron .opening-cell { visibility: visible; }
+  .section {
+    margin-top: 40px;
+    padding-top: 28px;
+    border-top: 1px solid var(--hairline);
+  }
+  .section-title {
+    font-family: 'Lora', serif;
+    font-weight: 600;
+    font-size: 18px;
+    margin: 0 0 16px;
+  }
+  .mode-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .mode-card {
+    border: 1px solid var(--hairline);
+    background: var(--surface);
+    padding: 16px 18px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    position: relative;
+  }
+  .mode-card input { position: absolute; opacity: 0; }
+  .mode-card:hover { border-color: var(--hairline-strong); }
+  .mode-card.selected {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .mode-name {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+  .mode-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+  .submit-area {
+    margin-top: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  button.primary {
+    height: 48px;
+    background: var(--ink);
+    color: var(--bg);
+    border: none;
+    border-radius: 3px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    letter-spacing: 0.01em;
+    transition: background 0.15s, opacity 0.15s;
+  }
+  button.primary:hover:not(:disabled) { background: var(--accent); }
+  button.primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .footnote {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 4px;
+  }
+  .error-msg {
+    background: #F9ECE7;
+    border: 1px solid #D9A89A;
+    color: var(--accent);
+    padding: 12px 14px;
+    border-radius: 4px;
+    font-size: 13px;
+    display: none;
+  }
+  .error-msg.visible { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Жеребьёвка БПД</h1>
+    <p class="subtitle">Британский парламентский формат — два рума, восемь команд</p>
+  </header>
+
+  <div id="status" class="status">
+    <div class="spinner"></div>
+    <span>Загрузка движка...</span>
+  </div>
+
+  <div class="table-header">
+    <span></span>
+    <span>Имя</span>
+    <span>Уровень</span>
+    <span>Айрон</span>
+    <span>Открывалка</span>
+  </div>
+
+  <div id="rows"></div>
+
+  <div class="section">
+    <h2 class="section-title">Режим расстановки</h2>
+    <div class="mode-grid">
+      <label class="mode-card selected">
+        <input type="radio" name="mode" value="1" checked>
+        <div class="mode-name">Режим 1 — смешанные пары</div>
+        <div class="mode-desc">Старичков и новичков ставим в пары вместе</div>
+      </label>
+      <label class="mode-card">
+        <input type="radio" name="mode" value="2">
+        <div class="mode-name">Режим 2 — раздельные румы</div>
+        <div class="mode-desc">Один рум — старички, другой — новички</div>
+      </label>
+    </div>
+  </div>
+
+  <div class="submit-area">
+    <div id="error-msg" class="error-msg"></div>
+    <button id="submit" class="primary" disabled>Сгенерировать таблицу</button>
+    <div class="footnote">Файл .xlsx скачается автоматически</div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script>
+  // ---- Build the 16 rows ----
+  const rowsContainer = document.getElementById('rows');
+  for (let i = 1; i <= 16; i++) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.dataset.idx = i;
+    row.innerHTML = `
+      <div class="num">${i}</div>
+      <input type="text" class="name" placeholder="${i === 1 ? 'Имя участника' : ''}" autocomplete="off">
+      <select class="level">
+        <option value="">—</option>
+        <option value="oldman">Старичок</option>
+        <option value="newbie">Новичок</option>
+      </select>
+      <select class="iron">
+        <option value="0">Нет</option>
+        <option value="1">Да</option>
+      </select>
+      <div class="opening-cell">
+        <select class="opening">
+          <option value="0">Без предпочтения</option>
+          <option value="1">Только открывалка</option>
+        </select>
+      </div>
+    `;
+    rowsContainer.appendChild(row);
+    row.querySelector('.iron').addEventListener('change', (e) => {
+      if (e.target.value === '1') row.classList.add('has-iron');
+      else { row.classList.remove('has-iron'); row.querySelector('.opening').value = '0'; }
+    });
+  }
+
+  // ---- Mode card selection ----
+  document.querySelectorAll('.mode-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      card.querySelector('input').checked = true;
+    });
+  });
+
+  // ---- Status + error helpers ----
+  const statusEl = document.getElementById('status');
+  const errorEl = document.getElementById('error-msg');
+  const submitBtn = document.getElementById('submit');
+  function setStatus(text, kind) {
+    statusEl.className = 'status' + (kind ? ' ' + kind : '');
+    statusEl.innerHTML = (kind === 'ready' ? '' : '<div class="spinner"></div>') + '<span>' + text + '</span>';
+  }
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.classList.add('visible');
+  }
+  function clearError() { errorEl.classList.remove('visible'); }
+
+  // ---- Load Pyodide and prepare Python module ----
+  let pyodide = null;
+  async function boot() {
+    try {
+      setStatus('Загружаю Python в браузер...');
+      pyodide = await loadPyodide();
+      setStatus('Устанавливаю openpyxl...');
+      await pyodide.loadPackage('micropip');
+      await pyodide.runPythonAsync(`
+import micropip
+await micropip.install('openpyxl')
+      `);
+      setStatus('Загружаю алгоритм...');
+      const resp = await fetch('bp_draw.py');
+      if (!resp.ok) throw new Error('Не удалось загрузить bp_draw.py (' + resp.status + ')');
+      const code = await resp.text();
+      pyodide.runPython(code);
+      setStatus('Готово — заполняйте форму', 'ready');
+      submitBtn.disabled = false;
+    } catch (e) {
+      setStatus('Ошибка загрузки: ' + e.message, 'error');
+    }
+  }
+  boot();
+
+  // ---- Gather form data and validate ----
+  function gather() {
+    const participants = [];
+    document.querySelectorAll('.row').forEach(row => {
+      const name = row.querySelector('.name').value.trim();
+      if (!name) return;
+      const level = row.querySelector('.level').value;
+      const ironman = row.querySelector('.iron').value === '1';
+      const opening = parseInt(row.querySelector('.opening').value, 10);
+      if (!level) throw new Error(`Участник «${name}» — не выбран уровень`);
+      participants.push({ name, level, ironman, opening: ironman ? opening : 0 });
+    });
+    if (participants.length < 2) throw new Error('Нужно как минимум 2 участника');
+    const mode = parseInt(document.querySelector('input[name="mode"]:checked').value, 10);
+    const ironCount = participants.filter(p => p.ironman).length;
+    const capacity = 16 - ironCount;
+    if (participants.length > capacity) {
+      throw new Error(`Слишком много участников (${participants.length}) при ${ironCount} айронах — максимум ${capacity}`);
+    }
+    return { participants, mode };
+  }
+
+  // ---- Submit handler ----
+  submitBtn.addEventListener('click', async () => {
+    clearError();
+    if (!pyodide) return;
+    let data;
+    try { data = gather(); }
+    catch (e) { showError(e.message); return; }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Считаю...';
+    try {
+      pyodide.globals.set('input_json', JSON.stringify(data.participants));
+      const result = pyodide.runPython(`
+import json
+run_draw(json.loads(input_json), ${data.mode})
+      `);
+      const bytes = result.toJs();
+      result.destroy();
+      const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'bp_draw.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      showError('Ошибка при генерации: ' + (e.message || e));
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Сгенерировать таблицу';
+    }
+  });
+</script>
+</body>
+</html>
