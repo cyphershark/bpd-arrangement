@@ -32,6 +32,9 @@ class Slot: # Slot — координаты места в сетке (рум, п
     def opening(self) -> bool:
         return self.position == 1
 
+def _running_in_browser() -> bool: # при детекции браузера не работаем в потоке консольного ввода
+    import sys
+    return "pyodide" in sys.modules or "_pyodide" in sys.modules
 
 def prompt_choice(prompt: str, valid: Set[str]) -> str: # prompt_choice крутится в цикле, пока юзер не введёт допустимое значение
     valid_lower = {v.lower() for v in valid}
@@ -521,7 +524,7 @@ def main() -> None:
     print(f"\nСделано. Сохранено: {OUTPUT_FILE}")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__" and not _running_in_browser():
     try:
         main()
     except KeyboardInterrupt:
