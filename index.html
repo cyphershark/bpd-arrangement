@@ -101,7 +101,21 @@
     grid-template-columns: 32px 1fr 130px 110px 170px;
     gap: 10px;
     align-items: center;
-  }
+}
+
+@media (max-width: 600px) {
+    .table-header, .row {
+        grid-template-columns: 20px 1fr 90px 70px 110px;
+        gap: 6px;
+    }
+    .table-header span, .row .num {
+        font-size: 11px;
+    }
+    input[type="text"], select {
+        font-size: 13px;
+        padding: 0 6px;
+    }
+}
   .table-header {
     font-size: 12px;
     text-transform: uppercase;
