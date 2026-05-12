@@ -123,14 +123,22 @@
         grid-column: 2 / 4;
         grid-row: 1;
     }
-    .row .level {
-        grid-column: 2;
-        grid-row: 2;
-    }
-    .row .iron {
-        grid-column: 3;
-        grid-row: 2;
-    }
+    .row .cell-level, .row .cell-iron {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    grid-row: 2;
+}
+  .row .cell-level { grid-column: 2; }
+  .row .cell-iron { grid-column: 3; }
+  .row .m-lbl {
+    display: block;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    padding-left: 2px;
+}
     .row .opening-cell {
         grid-column: 2 / 4;
         grid-row: 3;
@@ -259,6 +267,8 @@
     display: none;
   }
   .error-msg.visible { display: block; }
+  .m-lbl { display: none; }
+  .cell-level, .cell-iron { display: contents; }
 </style>
 </head>
 <body>
@@ -319,15 +329,20 @@
     row.innerHTML = `
       <div class="num">${i}</div>
       <input type="text" class="name" placeholder="${i === 1 ? 'Имя участника' : ''}" autocomplete="off">
-      <select class="level">
-        <option value="">—</option>
-        <option value="oldman" selected>Старичок</option>
-        <option value="newbie">Новичок</option>
-      </select>
-      <select class="iron">
-        <option value="0">Нет</option>
-        <option value="1">Да</option>
-      </select>
+      <div class="cell-level">
+        <span class="m-lbl">Уровень</span>
+        <select class="level">
+          <option value="oldman" selected>Старичок</option>
+          <option value="newbie">Новичок</option>
+        </select>
+      </div>
+      <div class="cell-iron">
+        <span class="m-lbl">Айрон</span>
+        <select class="iron">
+          <option value="0">Нет</option>
+          <option value="1">Да</option>
+        </select>
+      </div>
       <div class="opening-cell">
         <select class="opening">
           <option value="0">Без предпочтения</option>
