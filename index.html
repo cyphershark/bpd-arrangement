@@ -320,7 +320,6 @@
 
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
 <script>
-  // ---- Build the 16 rows ----
   const rowsContainer = document.getElementById('rows');
   for (let i = 1; i <= 16; i++) {
     const row = document.createElement('div');
@@ -357,7 +356,6 @@
     });
   }
 
-  // ---- Mode card selection ----
   document.querySelectorAll('.mode-card').forEach(card => {
     card.addEventListener('click', () => {
       document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
@@ -366,7 +364,6 @@
     });
   });
 
-  // ---- Status + error helpers ----
   const statusEl = document.getElementById('status');
   const errorEl = document.getElementById('error-msg');
   const submitBtn = document.getElementById('submit');
@@ -380,7 +377,6 @@
   }
   function clearError() { errorEl.classList.remove('visible'); }
 
-  // ---- Load Pyodide and prepare Python module ----
   let pyodide = null;
   async function boot() {
     try {
@@ -404,8 +400,6 @@ await micropip.install('openpyxl')
     }
   }
   boot();
-
-  // ---- Gather form data and validate ----
   function gather() {
     const participants = [];
     document.querySelectorAll('.row').forEach(row => {
@@ -426,8 +420,6 @@ await micropip.install('openpyxl')
     }
     return { participants, mode };
   }
-
-  // ---- Submit handler ----
   submitBtn.addEventListener('click', async () => {
     clearError();
     if (!pyodide) return;
@@ -461,6 +453,50 @@ run_draw(json.loads(input_json), ${data.mode})
       submitBtn.textContent = 'Сгенерировать таблицу';
     }
   });
+  function parseNamesText(raw) {
+  return raw.split(/[\n,;]+/).map(s => s.trim()).filter(Boolean);
+}
+
+function fillNameFields(names) {
+  document.querySelectorAll('.row .name').forEach((input, i) => {
+    input.value = names[i] || '';
+  });
+}
+
+function buildShareURL() {
+  const names = Array.from(document.querySelectorAll('.row .name'))
+    .map(i => i.value.trim())
+    .filter(Boolean);
+  const base = window.location.origin + window.location.pathname;
+  if (!names.length) return base;
+  return base + '?names=' + encodeURIComponent(names.join(','));
+}
+
+(function loadFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  const namesParam = params.get('names');
+  if (!namesParam) return;
+  const names = parseNamesText(namesParam);
+  fillNameFields(names);
+})();
+
+document.getElementById('apply-paste').addEventListener('click', () => {
+  const names = parseNamesText(document.getElementById('paste-names').value);
+  if (names.length) fillNameFields(names);
+});
+
+document.getElementById('copy-link').addEventListener('click', async () => {
+  const url = buildShareURL();
+  const btn = document.getElementById('copy-link');
+  try {
+    await navigator.clipboard.writeText(url);
+    const old = btn.textContent;
+    btn.textContent = 'Скопировано';
+    setTimeout(() => btn.textContent = old, 1500);
+  } catch {
+    prompt('Скопируйте ссылку:', url);
+  }
+});
 </script>
 </body>
 </html>
