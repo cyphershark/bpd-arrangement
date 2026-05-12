@@ -316,6 +316,11 @@
     <div class="footnote">Файл .xlsx скачается автоматически</div>
   </div>
 
+  <div id="result-section" style="display:none; margin-top: 48px; padding-top: 28px; border-top: 1px solid var(--hairline);">
+    <h2 style="font-family: 'Lora', serif; font-weight: 600; font-size: 18px; margin: 0 0 20px;">Результат жеребьёвки</h2>
+    <div id="draw-table"></div>
+    <p style="font-size: 12px; color: var(--muted); margin-top: 16px; text-align: center;">Файл .xlsx уже скачан</p>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
@@ -420,6 +425,13 @@ await micropip.install('openpyxl')
     }
     return { participants, mode };
   }
+function thStyle(align) {
+    return `padding: 8px 12px; border: 1px solid var(--hairline); text-align: ${align || 'center'}; font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;`;
+  }
+  function tdStyle(center) {
+    return `padding: 10px 12px; border: 1px solid var(--hairline); text-align: ${center ? 'center' : 'left'}; vertical-align: middle;`;
+  }
+
   submitBtn.addEventListener('click', async () => {
     clearError();
     if (!pyodide) return;
@@ -433,19 +445,47 @@ await micropip.install('openpyxl')
       pyodide.globals.set('input_json', JSON.stringify(data.participants));
       const result = pyodide.runPython(`
 import json
-run_draw(json.loads(input_json), ${data.mode})
+r = run_draw(json.loads(input_json), ${data.mode})
+import json as _json
+_json.dumps({"xlsx": r["xlsx"], "assignment": r["assignment"]})
       `);
-      const bytes = result.toJs();
-      result.destroy();
+      const parsed = JSON.parse(result);
+
+      const bytes = new Uint8Array(parsed.xlsx);
       const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = 'bp_draw.xlsx';
-      document.body.appendChild(a);
-      a.click();
+      a.href = url; a.download = 'bp_draw.xlsx';
+      document.body.appendChild(a); a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+
+      const asgn = parsed.assignment;
+      let html = '<table style="width:100%; border-collapse:collapse; font-size:14px;">';
+      html += '<thead><tr>'
+        + '<th style="' + thStyle('left') + '">Рум</th>'
+        + '<th style="' + thStyle() + '">Поз.</th>'
+        + '<th style="' + thStyle() + '; background:#D9E6F2;">ПРОП</th>'
+        + '<th style="' + thStyle() + '; background:#FBF2CC;">ОПП</th>'
+        + '</tr></thead><tbody>';
+      for (const room of [1, 2]) {
+        for (const pos of [1, 2]) {
+          const prop = (asgn[`${room}_${pos}_ПРОП`] || []).join(', ') || '—';
+          const opp  = (asgn[`${room}_${pos}_ОПП`]  || []).join(', ') || '—';
+          html += '<tr>';
+          if (pos === 1) html += `<td rowspan="2" style="${tdStyle(true)}">${room}</td>`;
+          html += `<td style="${tdStyle()}">${pos}</td>`;
+          html += `<td style="${tdStyle()}; background:#EEF4FA;">${prop}</td>`;
+          html += `<td style="${tdStyle()}; background:#FEFAED;">${opp}</td>`;
+          html += '</tr>';
+        }
+      }
+      html += '</tbody></table>';
+      document.getElementById('draw-table').innerHTML = html;
+      const section = document.getElementById('result-section');
+      section.style.display = 'block';
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
     } catch (e) {
       showError('Ошибка при генерации: ' + (e.message || e));
     } finally {
