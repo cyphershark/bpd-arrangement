@@ -470,8 +470,8 @@ _json.dumps({"xlsx": r["xlsx"], "assignment": r["assignment"]})
         + '</tr></thead><tbody>';
       for (const room of [1, 2]) {
         for (const pos of [1, 2]) {
-          const prop = (asgn[`${room}_${pos}_ПРОП`] || []).join(', ') || '—';
-          const opp  = (asgn[`${room}_${pos}_ОПП`]  || []).join(', ') || '—';
+          const prop = (asgn[`${room}_${pos}_ПРОП`] || []).join(',<br>') || '—';
+          const opp  = (asgn[`${room}_${pos}_ОПП`]  || []).join(',<br>') || '—';
           html += '<tr>';
           if (pos === 1) html += `<td rowspan="2" style="${tdStyle(true)}">${room}</td>`;
           html += `<td style="${tdStyle()}">${pos}</td>`;
