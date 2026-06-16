@@ -221,7 +221,6 @@ def build_units(participants: List[Participant], mode: int) -> List[List[Partici
     random.shuffle(units) # финальный shuffle перемешивает порядок пар, чтобы порядок их обработки не выдавал, кто пришёл первым
     return units
 
-
 def assign_ironmen( # assign_ironmen — первый этап раздачи слотов; айроны идут раньше пар, потому что у них есть жёсткие ограничения
     participants: List[Participant],
     slots: List[Slot],
@@ -334,7 +333,141 @@ def assign_pairs_to_slots( # assign_pairs_to_slots — второй этап; re
 
     return current_assignment
 
+def assign_mode_3(participants: List[Participant], slots: List[Slot]) -> Dict[Tuple[int, int, str], List[str]]:
+    """
+    Mode 3 — "Ironmen room":
+      One room is all ironmen (4 of them, one per side).
+      The other room has 4 mixed pairs.
+    Requires exactly 4 ironmen and exactly 8 non-ironmen.
+    """
+    ironmen = [p for p in participants if p.ironman]
+    non_ironmen = [p for p in participants if not p.ironman]
+
+    if len(ironmen) != 4:
+        raise ValueError(
+            f"Режим 3 (рум айронов) требует ровно 4 айрона. Сейчас: {len(ironmen)}."
+        )
+    if len(non_ironmen) != 8:
+        raise ValueError(
+            f"Режим 3 (рум айронов) требует ровно 8 не-айронов. Сейчас: {len(non_ironmen)}."
+        )
+
+    assignment: Dict[Tuple[int, int, str], List[str]] = {}
+    ironman_room = random.choice([1, 2])
+    pair_room = 3 - ironman_room
+
+    iron_slots = [s for s in slots if s.room == ironman_room]
+    iron_opening = [s for s in iron_slots if s.position == 1]
+    iron_closing = [s for s in iron_slots if s.position == 2]
+    random.shuffle(iron_opening)
+    random.shuffle(iron_closing)
+
+    random.shuffle(ironmen)
+    opening_pref = [p for p in ironmen if p.opening == 1]
+    no_pref = [p for p in ironmen if p.opening == 0]
+
+    for p in opening_pref:
+        pool = iron_opening if iron_opening else iron_closing
+        slot = pool.pop()
+        assignment[(slot.room, slot.position, slot.side)] = [p.name]
+
+    remaining_iron = iron_opening + iron_closing
+    random.shuffle(remaining_iron)
+    for p in no_pref:
+        slot = remaining_iron.pop()
+        assignment[(slot.room, slot.position, slot.side)] = [p.name]
+
+    newbies = [p for p in non_ironmen if p.level == "newbie"]
+    oldmen = [p for p in non_ironmen if p.level == "oldman"]
+    random.shuffle(newbies)
+    random.shuffle(oldmen)
+
+    pairs = []
+    while newbies and oldmen:
+        pairs.append([newbies.pop(), oldmen.pop()])
+    leftovers = newbies + oldmen
+    random.shuffle(leftovers)
+    while len(leftovers) >= 2:
+        pairs.append([leftovers.pop(), leftovers.pop()])
+
+    pair_slots = [s for s in slots if s.room == pair_room]
+    random.shuffle(pair_slots)
+    for pair in pairs:
+        slot = pair_slots.pop()
+        assignment[(slot.room, slot.position, slot.side)] = [p.name for p in pair]
+
+    return assignment
+
+
+def assign_mode_4(participants: List[Participant], slots: List[Slot]) -> Dict[Tuple[int, int, str], List[str]]:
+    """
+    Mode 4 — "One room":
+      Only one room used. Mixed pairs preferred. Ironmen sit solo as usual.
+    Capacity: each ironman takes 1 side, each pair takes 1 side, 4 sides total.
+    """
+    ironmen = [p for p in participants if p.ironman]
+    non_ironmen = [p for p in participants if not p.ironman]
+
+    n_iron = len(ironmen)
+    n_pairs_needed = (len(non_ironmen) + 1) // 2
+    if n_iron + n_pairs_needed > 4:
+        raise ValueError(
+            f"Режим 4 (один рум): слишком много участников. "
+            f"{n_iron} айронов и {len(non_ironmen)} остальных не помещаются в 4 стола."
+        )
+
+    assignment: Dict[Tuple[int, int, str], List[str]] = {}
+    room_used = random.choice([1, 2])
+    room_slots = [s for s in slots if s.room == room_used]
+    used: Set[Tuple[int, int, str]] = set()
+
+    random.shuffle(ironmen)
+    opening_pref = [p for p in ironmen if p.opening == 1]
+    no_pref = [p for p in ironmen if p.opening == 0]
+
+    opening_slots = [s for s in room_slots if s.position == 1]
+    random.shuffle(opening_slots)
+
+    for p in opening_pref:
+        available = [s for s in opening_slots if (s.room, s.position, s.side) not in used]
+        if not available:
+            available = [s for s in room_slots if (s.room, s.position, s.side) not in used]
+        chosen = random.choice(available)
+        assignment[(chosen.room, chosen.position, chosen.side)] = [p.name]
+        used.add((chosen.room, chosen.position, chosen.side))
+
+    for p in no_pref:
+        available = [s for s in room_slots if (s.room, s.position, s.side) not in used]
+        chosen = random.choice(available)
+        assignment[(chosen.room, chosen.position, chosen.side)] = [p.name]
+        used.add((chosen.room, chosen.position, chosen.side))
+
+    newbies = [p for p in non_ironmen if p.level == "newbie"]
+    oldmen = [p for p in non_ironmen if p.level == "oldman"]
+    random.shuffle(newbies)
+    random.shuffle(oldmen)
+
+    pairs = []
+    while newbies and oldmen:
+        pairs.append([newbies.pop(), oldmen.pop()])
+    leftovers = newbies + oldmen
+    random.shuffle(leftovers)
+    while len(leftovers) >= 2:
+        pairs.append([leftovers.pop(), leftovers.pop()])
+    if leftovers:
+        pairs.append([leftovers.pop()])
+
+    available_slots = [s for s in room_slots if (s.room, s.position, s.side) not in used]
+    random.shuffle(available_slots)
+    for pair in pairs:
+        chosen = available_slots.pop()
+        assignment[(chosen.room, chosen.position, chosen.side)] = [p.name for p in pair]
+        used.add((chosen.room, chosen.position, chosen.side))
+
+    return assignment
+
 def run_draw(participants_data: List[Dict], mode: int) -> Dict:
+    random.seed()  # запатчено из-за бага с повторяющимся каплингом по именам 
     participants = [
         Participant(
             name=p["name"],
@@ -344,6 +477,40 @@ def run_draw(participants_data: List[Dict], mode: int) -> Dict:
         )
         for p in participants_data
     ]
+
+    slots = build_slots()
+
+    if mode == 1:
+        assignment = assign_ironmen(participants, slots, None)
+        remaining = [p for p in participants if not p.ironman]
+        units = build_units(remaining, mode)
+        assignment = assign_pairs_to_slots(units, slots, assignment, mode, None)
+    elif mode == 2:
+        oldman_room = random.choice([1, 2])
+        room_for_level: Optional[Dict[str, int]] = {
+            "oldman": oldman_room,
+            "newbie": 3 - oldman_room,
+        }
+        assignment = assign_ironmen(participants, slots, room_for_level)
+        remaining = [p for p in participants if not p.ironman]
+        units = build_units(remaining, mode)
+        assignment = assign_pairs_to_slots(units, slots, assignment, mode, room_for_level)
+    elif mode == 3:
+        assignment = assign_mode_3(participants, slots)
+    elif mode == 4:
+        assignment = assign_mode_4(participants, slots)
+    else:
+        raise ValueError(f"Неизвестный режим: {mode}")
+
+    buf = io.BytesIO()
+    write_excel(participants, assignment, buf)
+
+    serializable = {
+        f"{room}_{pos}_{side}": names
+        for (room, pos, side), names in assignment.items()
+    }
+
+    return {"xlsx": list(buf.getvalue()), "assignment": serializable}
 
     slots = build_slots()
     if mode == 2:
