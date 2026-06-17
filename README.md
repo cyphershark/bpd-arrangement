@@ -4,8 +4,8 @@
 ![App Screenshot](screenshots/webassign.png)
 
 <p align="center">
-  <a href="https://cyphershark.github.io/bpd/">
-    <img src="https://img.shields.io/badge/🎲%20Запустить%20жеребьёвку-→-7A2E1F?style=for-the-badge&labelColor=1A1A1A" height="52" alt="Запустить">
+  <a href="https://cyphershark.github.io/bpd-arrangement/">
+    <img src="https://img.shields.io/badge/GitHub_Pages-%D0%9E%D1%82%D0%BA%D1%80%D1%8B%D1%82%D1%8C-222?style=for-the-badge&logo=github&logoColor=white" height="52" alt="Запустить">
   </a>
 </p>
 
