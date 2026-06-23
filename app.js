@@ -158,10 +158,11 @@ _json.dumps({"xlsx": r["xlsx"], "assignment": r["assignment"]})
     let html = '<table style="width:100%; border-collapse:collapse; font-size:14px;">';
     html += '<thead><tr>'
       + '<th style="' + thStyle('left') + '">Рум</th>'
-      + '<th style="' + thStyle() + '">Поз.</th>'
+      + '<th style="' + thStyle() + '">Позиция</th>'
       + '<th style="' + thStyle() + '; background:#D9E6F2;">ПРОП</th>'
       + '<th style="' + thStyle() + '; background:#FBF2CC;">ОПП</th>'
       + '</tr></thead><tbody>';
+    const posNames = { 1: '1 стол', 2: '2 стол' };
     const roomNames = { 1: 'Верхний рум (вы здесь)', 2: 'Подвал' };
     for (const room of [1, 2]) {
       for (const pos of [1, 2]) {
@@ -169,7 +170,7 @@ _json.dumps({"xlsx": r["xlsx"], "assignment": r["assignment"]})
         const opp  = (asgn[`${room}_${pos}_ОПП`]  || []).join(',<br>') || '—';
         html += '<tr>';
         if (pos === 1) html += `<td rowspan="2" style="${tdStyle(true)}">${room}</td>`;
-        html += `<td style="${tdStyle()}">${pos}</td>`;
+        html += `<td style="${tdStyle()}">${posNames[pos]}</td>`;
         html += `<td style="${tdStyle()}; background:#EEF4FA;">${prop}</td>`;
         html += `<td style="${tdStyle()}; background:#FEFAED;">${opp}</td>`;
         html += '</tr>';
