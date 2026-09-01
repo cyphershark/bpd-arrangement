@@ -155,7 +155,7 @@ submitBtn.addEventListener('click', async () => {
 import json
 r = run_draw(json.loads(input_json), ${data.mode})
 import json as _json
-_json.dumps({"xlsx": r["xlsx"], "assignment": r["assignment"]})
+_json.dumps({"xlsx": r["xlsx"], "assignment": r["assignment"], "promoted": r.get("promoted", [])})
     `);
     const parsed = JSON.parse(result);
 
@@ -191,6 +191,11 @@ _json.dumps({"xlsx": r["xlsx"], "assignment": r["assignment"]})
       }
     }
     html += '</tbody></table>';
+    if (parsed.promoted && parsed.promoted.length) {
+      html += '<p style="font-size: 13px; color: var(--muted); margin-top: 12px; text-align: center;">'
+        + 'Для заполнения сетки автоматически назначены айронами: <b>'
+        + parsed.promoted.map(escapeHtml).join(', ') + '</b></p>';
+    }
     document.getElementById('draw-table').innerHTML = html;
     // прячем старую картинку подготовки — она относилась к прошлой жеребьёвке
     const prepArea = document.getElementById('prep-image-area');
