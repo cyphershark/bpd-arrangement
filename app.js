@@ -125,6 +125,20 @@ function tdStyle(center) {
   return `padding: 10px 12px; border: 1px solid var(--hairline); text-align: ${center ? 'center' : 'left'}; vertical-align: middle;`;
 }
 
+// экранирование для вставки имён в html
+function escapeHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// имена как редактируемые ячейки (contenteditable)
+function editableNames(asgn, slotKey) {
+  const names = asgn[slotKey] || [];
+  if (!names.length) return '—';
+  return names.map((n, i) =>
+    `<span class="editable-name" contenteditable="true" spellcheck="false" data-slot="${slotKey}" data-i="${i}">${escapeHtml(n)}</span>`
+  ).join(',<br>');
+}
+
 // сабмит кнопка
 submitBtn.addEventListener('click', async () => {
   clearError();
@@ -166,8 +180,8 @@ _json.dumps({"xlsx": r["xlsx"], "assignment": r["assignment"]})
     const roomNames = { 1: 'Верхний рум (вы здесь)', 2: 'Подвал' };
     for (const room of [1, 2]) {
       for (const pos of [1, 2]) {
-        const prop = (asgn[`${room}_${pos}_ПРОП`] || []).join(',<br>') || '—';
-        const opp  = (asgn[`${room}_${pos}_ОПП`]  || []).join(',<br>') || '—';
+        const prop = editableNames(asgn, `${room}_${pos}_ПРОП`);
+        const opp  = editableNames(asgn, `${room}_${pos}_ОПП`);
         html += '<tr>';
         if (pos === 1) html += `<td rowspan="2" style="${tdStyle(true)}">${room}</td>`;
         html += `<td style="${tdStyle()}">${posNames[pos]}</td>`;
@@ -178,6 +192,9 @@ _json.dumps({"xlsx": r["xlsx"], "assignment": r["assignment"]})
     }
     html += '</tbody></table>';
     document.getElementById('draw-table').innerHTML = html;
+    // прячем старую картинку подготовки — она относилась к прошлой жеребьёвке
+    const prepArea = document.getElementById('prep-image-area');
+    if (prepArea) prepArea.style.display = 'none';
     const section = document.getElementById('result-section');
     section.style.display = 'block';
     section.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -240,5 +257,132 @@ if (copyBtn) {
     } catch {
       prompt('Скопируйте ссылку:', url);
     }
+  });
+}
+// === Места подготовки ===
+
+// Enter внутри редактируемого имени не должен создавать перенос строки
+document.getElementById('draw-table').addEventListener('keydown', (e) => {
+  if (e.target.classList && e.target.classList.contains('editable-name') && e.key === 'Enter') {
+    e.preventDefault();
+    e.target.blur();
+  }
+});
+
+// собираем актуальные (в т.ч. отредактированные) имена по позиции и стороне
+function collectByPosition() {
+  const map = { '1_ПРОП': [], '2_ПРОП': [], '1_ОПП': [], '2_ОПП': [] };
+  document.querySelectorAll('#draw-table .editable-name').forEach(sp => {
+    const parts = (sp.dataset.slot || '').split('_'); // room_pos_side
+    if (parts.length !== 3) return;
+    const key = `${parts[1]}_${parts[2]}`;
+    const name = sp.textContent.trim();
+    if (name && map[key]) map[key].push(name);
+  });
+  return map;
+}
+
+// рисуем картинку "Где готовимся" на канвасе
+function drawPrepImage(byPos) {
+  // раскладка: бар и большой зал переставлены, малый зал и склад тоже (зеркально по горизонтали)
+  const cells = [
+    { row: 0, col: 0, place: 'Большой зал', names: byPos['2_ПРОП'] },
+    { row: 0, col: 1, place: 'Бар',         names: byPos['1_ПРОП'] },
+    { row: 1, col: 0, place: 'Склад',       names: byPos['2_ОПП'] },
+    { row: 1, col: 1, place: 'Малый зал',   names: byPos['1_ОПП'] },
+  ];
+  const sideLabels = ['Верх', 'Низ'];
+
+  const scale = 2; // ретина-чёткость
+  const pad = 16, titleH = 44, sideW = 52;
+  const labelH = 22, lineH = 26, cellPad = 8;
+
+  // ширина ячейки подстраивается под самое длинное имя
+  const measurer = document.createElement('canvas').getContext('2d');
+  measurer.font = "600 19px 'Fira Sans', Arial, sans-serif";
+  let maxNameW = 0;
+  for (const c of cells) for (const n of c.names) {
+    maxNameW = Math.max(maxNameW, measurer.measureText(n).width);
+  }
+  const cellW = Math.min(360, Math.max(220, Math.ceil(maxNameW) + cellPad * 2 + 8));
+
+  const maxLines = Math.max(1, ...cells.map(c => c.names.length));
+  const cellH = labelH + cellPad + maxLines * lineH + cellPad;
+  const width = pad * 2 + cellW * 2 + sideW;
+  const height = pad + titleH + cellH * 2 + pad;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(scale, scale);
+
+  // фон
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#111111';
+
+  // заголовок
+  ctx.font = "600 26px 'Fira Sans', Arial, sans-serif";
+  ctx.fillText('Где готовимся', pad, pad);
+
+  const gridX = pad, gridY = pad + titleH;
+
+  // ячейки
+  for (const c of cells) {
+    const x = gridX + c.col * cellW;
+    const y = gridY + c.row * cellH;
+    ctx.strokeStyle = '#111111';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x, y, cellW, cellH);
+
+    // подпись места
+    ctx.font = "400 14px 'Fira Sans', Arial, sans-serif";
+    ctx.fillStyle = '#333333';
+    ctx.fillText(c.place, x + cellPad, y + 5);
+
+    // имена
+    ctx.font = "600 19px 'Fira Sans', Arial, sans-serif";
+    ctx.fillStyle = '#111111';
+    if (c.names.length) {
+      c.names.forEach((n, i) => {
+        // подрезаем слишком длинные имена, чтобы не вылезали за ячейку
+        let text = n;
+        while (ctx.measureText(text).width > cellW - cellPad * 2 && text.length > 3) {
+          text = text.slice(0, -2);
+        }
+        if (text !== n) text += '…';
+        ctx.fillText(text, x + cellPad, y + labelH + cellPad + i * lineH);
+      });
+    } else {
+      ctx.fillStyle = '#999999';
+      ctx.fillText('—', x + cellPad, y + labelH + cellPad);
+    }
+  }
+
+  // подписи Верх / Низ справа
+  ctx.font = "400 15px 'Fira Sans', Arial, sans-serif";
+  ctx.fillStyle = '#111111';
+  sideLabels.forEach((lbl, row) => {
+    ctx.fillText(lbl, gridX + cellW * 2 + 10, gridY + row * cellH + 4);
+  });
+
+  return canvas;
+}
+
+const showPrepBtn = document.getElementById('show-prep');
+if (showPrepBtn) {
+  showPrepBtn.addEventListener('click', async () => {
+    try { await document.fonts.ready; } catch {}
+    const canvas = drawPrepImage(collectByPosition());
+    const dataURL = canvas.toDataURL('image/png');
+    const img = document.getElementById('prep-img');
+    const link = document.getElementById('prep-download');
+    img.src = dataURL;
+    link.href = dataURL;
+    const area = document.getElementById('prep-image-area');
+    area.style.display = 'block';
+    area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
 }

@@ -64,7 +64,16 @@
   <div id="result-section" style="display:none; margin-top: 48px; padding-top: 28px; border-top: 1px solid var(--hairline);">
     <h2 style="font-family: 'Lora', serif; font-weight: 600; font-size: 18px; margin: 0 0 20px;">Результат жеребьёвки</h2>
     <div id="draw-table"></div>
-    <p style="font-size: 12px; color: var(--muted); margin-top: 16px; text-align: center;">Файл .xlsx уже скачан</p>
+    <p style="font-size: 12px; color: var(--muted); margin-top: 12px; text-align: center;">Имена в таблице можно исправить вручную — кликните по имени и отредактируйте его</p>
+    <p style="font-size: 12px; color: var(--muted); margin-top: 6px; text-align: center;">Файл .xlsx уже скачан</p>
+
+    <div class="prep-area">
+      <button id="show-prep" class="primary">Показать места подготовки</button>
+      <div id="prep-image-area" style="display:none;">
+        <img id="prep-img" alt="Места подготовки">
+        <a id="prep-download" class="prep-download" download="prep_places.png">Скачать PNG</a>
+      </div>
+    </div>
   </div>
 </div>
 

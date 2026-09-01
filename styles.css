@@ -294,3 +294,42 @@ button.primary:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .m-lbl { display: none; }
 .cell-level, .cell-iron { display: contents; }
+/* === Редактируемые имена в итоговой таблице === */
+.editable-name {
+  display: inline-block;
+  min-width: 40px;
+  padding: 1px 3px;
+  border-radius: 4px;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.25);
+  cursor: text;
+  transition: background 0.15s;
+}
+.editable-name:hover { background: rgba(0, 0, 0, 0.05); }
+.editable-name:focus {
+  outline: 2px solid var(--accent, #4a6fa5);
+  outline-offset: 1px;
+  background: #fff;
+  border-bottom-color: transparent;
+}
+
+/* === Блок "места подготовки" === */
+.prep-area {
+  margin-top: 24px;
+  text-align: center;
+}
+#prep-image-area {
+  margin-top: 20px;
+}
+#prep-image-area img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--hairline, #ddd);
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.07);
+}
+.prep-download {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--accent, #4a6fa5);
+}
